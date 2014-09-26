@@ -27,11 +27,11 @@ class Ios::Receipt::Client
   protected
   
   def try_production?
-    @method == :production || @method == :mixed
+    [:mixed, :production].include? @method
   end
   
   def try_sandbox?
-    @method == :sandbox || @method == :mixed
+    [:mixed, :sandbox].include? @method
   end
   
   def valid_method?

@@ -25,7 +25,8 @@ class Ios::Receipt::Result
         @latest = {
           transaction_id: latest['transaction_id'],
           purchase_date: parse_time(latest['purchase_date']),
-          expires_date: parse_time(latest['expires_date_formatted'])
+          expires_date: parse_time(latest['expires_date_formatted']),
+          cancellation_date: parse_time(latest['cancellation_date'])
         }
       end
     end
@@ -51,13 +52,13 @@ class Ios::Receipt::Result
     end
     @in_app = @in_app.sort_by { |r| r[:expires_date] }
     @latest ||= @in_app.last || {}
+    @original ||= {}
     
     @expires_date = [parse_time(receipt['expiration_date']), @latest[:expires_date]].compact.min
   end
   
   def in_trial?
-    return false if @in_app.length == 0
-    @in_app.last[:is_trial_period]
+    @latest.has_key?(:is_trial_period) && @latest[:is_trial_period]
   end
   
   def active?
@@ -74,9 +75,7 @@ class Ios::Receipt::Result
   end
   
   def cancelled?
-    return false if @in_app.length == 0
-    canceled = @in_app.detect { |a| !a[:cancellation_date].nil? }
-    !canceled.nil?
+    latest_cancelled? || any_cancelled?
   end
   
   def transaction_ids
@@ -111,5 +110,14 @@ class Ios::Receipt::Result
   def parse_time(string)
     return nil if string.blank?
     Time.parse string.sub('Etc/GMT', 'GMT')
+  end
+  
+  def latest_cancelled?
+    !@latest[:cancellation_date].nil?
+  end
+  
+  def any_cancelled?
+    any_cancelled = @in_app.detect { |a| !a[:cancellation_date].nil? }
+    !any_cancelled.nil?
   end
 end
