@@ -18,6 +18,7 @@ class Ios::Receipt::Result
       @original = {
         transaction_id: receipt['original_transaction_id'],
         purchase_date: parse_time(receipt['original_purchase_date']),
+        product_id: receipt['product_id']
       }
       
       latest = result['latest_receipt_info'] || result['latest_expired_receipt_info']
@@ -26,7 +27,8 @@ class Ios::Receipt::Result
           transaction_id: latest['transaction_id'],
           purchase_date: parse_time(latest['purchase_date']),
           expires_date: parse_time(latest['expires_date_formatted']),
-          cancellation_date: parse_time(latest['cancellation_date'])
+          cancellation_date: parse_time(latest['cancellation_date']),
+          product_id: receipt['product_id']
         }
       end
     end
@@ -53,8 +55,6 @@ class Ios::Receipt::Result
     @in_app = @in_app.sort_by { |r| r[:expires_date] }
     @latest ||= @in_app.last || {}
     @original ||= {}
-    @product_id = receipt['product_id']
-    
     @expires_date = [parse_time(receipt['expiration_date']), @latest[:expires_date]].compact.min
   end
   
