@@ -1,6 +1,6 @@
 class Ios::Receipt::Result
   attr_reader :result, :environment, :bundle_id, :application_version, :original_application_version,
-              :in_app, :expires_date, :original, :latest
+              :in_app, :expires_date, :original, :latest, :product_id
 
   def initialize(result, environment=nil)
     @result = result
@@ -53,6 +53,7 @@ class Ios::Receipt::Result
     @in_app = @in_app.sort_by { |r| r[:expires_date] }
     @latest ||= @in_app.last || {}
     @original ||= {}
+    @product_id = receipt['product_id']
     
     @expires_date = [parse_time(receipt['expiration_date']), @latest[:expires_date]].compact.min
   end
