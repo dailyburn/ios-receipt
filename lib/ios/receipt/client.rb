@@ -4,10 +4,11 @@ class Ios::Receipt::Client
     sandbox: 'https://sandbox.itunes.apple.com/verifyReceipt'
   }
   
-  def initialize(method=nil, secret=nil)
+  def initialize(method=nil, secret=nil, ssl_version='TLSv1')
     method ||= :mixed
     @method = method
     @secret = secret
+    @ssl_version = ssl_version
     
     raise Ios::Receipt::Exceptions::InvalidConfiguration unless valid_method?
   end
@@ -40,7 +41,7 @@ class Ios::Receipt::Client
   
   def post_to_endpoint(env, data)
     begin
-      response = RestClient.post ENDPOINTS[env], data
+      response = RestClient::Request.execute method: :post, url: ENDPOINTS[env], payload: data, ssl_version: @ssl_version
       Ios::Receipt::Result.new JSON.parse(response), env
     rescue Ios::Receipt::Exceptions::SandboxReceipt => e
       raise Ios::Receipt::Exceptions::SandboxReceipt unless env == :production && try_sandbox?
