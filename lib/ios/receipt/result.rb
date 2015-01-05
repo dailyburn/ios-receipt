@@ -1,6 +1,6 @@
 class Ios::Receipt::Result
   attr_reader :result, :environment, :bundle_id, :application_version, :original_application_version,
-              :in_app, :latest, :transaction_ids
+              :in_app, :latest
 
   def initialize(result, environment=nil)
     @result = result
