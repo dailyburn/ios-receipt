@@ -46,7 +46,12 @@ class Ios::Receipt::Receipt
   private
 
   def parse_time(str)
-    return nil if str.blank?
-    Time.parse str.sub('Etc/GMT', 'GMT')
+    return nil if str.nil? || str == ''
+
+    if !str.match(/^[0-9]+$/).nil? # It's in number format
+      Time.at(str.to_i / 1000)
+    else # They've sent it in string format
+      Time.parse(str.sub('Etc/GMT', 'GMT')) rescue nil
+    end
   end
 end
