@@ -17,11 +17,17 @@ class Ios::Receipt::Result
 
     if receipt['original_transaction_id'] # ios6 style receipt
       latest = result['latest_receipt_info'] || result['latest_expired_receipt_info']
-      @latest = Ios::Receipt::Receipt.new(latest) if latest
+      @latest = if latest
+        [ Ios::Receipt::Receipt.new(latest) ]
+      elsif receipt['original_transaction_id']
+        [ Ios::Receipt::Receipt.new(receipt) ]
+      else
+        []
+      end
     end
 
     @in_app = [receipt['in_app'] || []].flatten.compact.collect { |r| Ios::Receipt::Receipt.new r }
-    @latest = [result['latest_receipt_info'] || []].flatten.compact.collect { |r| Ios::Receipt::Receipt.new r }
+    @latest = [result['latest_receipt_info'] || []].flatten.compact.collect { |r| Ios::Receipt::Receipt.new r } unless @latest
   end
 
   def recurring_receipts
