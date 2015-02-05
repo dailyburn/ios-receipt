@@ -1,6 +1,6 @@
 class Ios::Receipt::Result
   attr_reader :result, :environment, :bundle_id, :application_version, :original_application_version,
-              :in_app, :expires_date, :original, :latest, :product_id
+              :in_app, :latest
 
   def initialize(result, environment=nil)
     @result = result
@@ -14,76 +14,32 @@ class Ios::Receipt::Result
     @bundle_id = receipt['bid'] || receipt['bundle_id']
     @application_version = receipt['application_version']
     @original_application_version = receipt['original_application_version']
+
     if receipt['original_transaction_id'] # ios6 style receipt
-      @original = {
-        transaction_id: receipt['original_transaction_id'],
-        purchase_date: parse_time(receipt['original_purchase_date']),
-        product_id: receipt['product_id']
-      }
-      
       latest = result['latest_receipt_info'] || result['latest_expired_receipt_info']
-      if latest
-        @latest = {
-          transaction_id: latest['transaction_id'],
-          purchase_date: parse_time(latest['purchase_date']),
-          expires_date: parse_time(latest['expires_date_formatted']),
-          cancellation_date: parse_time(latest['cancellation_date']),
-          product_id: receipt['product_id']
-        }
+      @latest = if latest
+        [ Ios::Receipt::Receipt.new(latest) ]
+      elsif receipt['original_transaction_id']
+        [ Ios::Receipt::Receipt.new(receipt) ]
+      else
+        []
       end
     end
 
-    @in_app = []
-    if receipt['in_app'] && receipt['in_app'].is_a?(Array)
-      receipt['in_app'].each do |r|
-        this_receipt = {
-          quantity: r['quantity'],
-          product_id: r['product_id'],
-          transaction_id: r['transaction_id'],
-          purchase_date: parse_time(r['purchase_date']),
-          expires_date: parse_time(r['expires_date']),
-          cancellation_date: parse_time(r['cancellation_date']),
-          app_item_id: r['app_item_id'],
-          version_external_identifier: r['version_external_identifier'],
-          web_order_line_item_id: r['web_order_line_item_id'],
-          is_trial_period: r['is_trial_period'] == 'true'
-        }
-        @original = this_receipt if @original.nil? && r['transaction_id'] == r['original_transaction_id']
-        @in_app.push(this_receipt)
-      end
-    end
-    @in_app = @in_app.sort_by { |r| r[:expires_date] }
-    @latest ||= @in_app.last || {}
-    @original ||= {}
-    @expires_date = [parse_time(receipt['expiration_date']), @latest[:expires_date]].compact.min
+    @in_app = [receipt['in_app'] || []].flatten.compact.collect { |r| Ios::Receipt::Receipt.new r }
+    @latest = [result['latest_receipt_info'] || []].flatten.compact.collect { |r| Ios::Receipt::Receipt.new r } unless @latest
   end
-  
-  def in_trial?
-    @latest.has_key?(:is_trial_period) && @latest[:is_trial_period]
+
+  def recurring_receipts
+    @recurring ||= @latest.select { |r| r.recurring? }
   end
-  
-  def active?
-    !inactive?
-  end
-  
-  def inactive?
-    expired? || cancelled?
+
+  def once_off_receipts
+    @once_offs ||= @latest.select { |r| r.once_off? }
   end
   
   def expired?
-    return true if @status == 21006
-    !!(@expires_date && @expires_date < Time.now)
-  end
-  
-  def cancelled?
-    latest_cancelled? || any_cancelled?
-  end
-  
-  def transaction_ids
-    ids = @in_app.collect { |a| a[:transaction_id] }
-    ids.push(@original[:transaction_id]) if @original && @original[:transaction_id]
-    ids.push(@latest[:transaction_id]) if @latest && @latest[:transaction_id]
-    ids.uniq.compact
+    @status == 21006
   end
   
   def sandbox?
@@ -92,6 +48,22 @@ class Ios::Receipt::Result
   
   def production?
     @environment == :production
+  end
+
+  def active_recurring_receipts
+    @active_recurring_receipts ||= recurring_receipts.select { |r| r.active? }
+  end
+
+  def next_recurring_receipt
+    @next_recurring_receipt ||= active_recurring_receipts.sort_by { |r| r.expires_date }.first
+  end
+
+  def in_trial_receipts
+    @in_trial_receipts ||= active_recurring_receipts.select { |r| r.in_trial? }
+  end
+
+  def transaction_ids
+    (@in_app.collect { |r| r.transaction_id } + @latest.collect { |r| r.transaction_id }).flatten.compact.uniq
   end
   
   protected
@@ -106,19 +78,5 @@ class Ios::Receipt::Result
     when 21007 then raise Ios::Receipt::Exceptions::SandboxReceipt
     when 21008 then raise Ios::Receipt::Exceptions::ProductionReceipt
     end
-  end
-  
-  def parse_time(string)
-    return nil if string.blank?
-    Time.parse string.sub('Etc/GMT', 'GMT')
-  end
-  
-  def latest_cancelled?
-    !@latest[:cancellation_date].nil?
-  end
-  
-  def any_cancelled?
-    any_cancelled = @in_app.detect { |a| !a[:cancellation_date].nil? }
-    !any_cancelled.nil?
   end
 end

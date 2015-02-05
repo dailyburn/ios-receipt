@@ -3,6 +3,7 @@ require 'ios/receipt/version'
 require 'ios/receipt/exceptions'
 require 'ios/receipt/client'
 require 'ios/receipt/result'
+require 'ios/receipt/receipt'
 
 module Ios
   module Receipt
