@@ -1,12 +1,12 @@
 # IosReceipt
 
-TODO: Write a gem description
+ios-receipt is a RubyGem to manage validating and parsing iOS purchase receipts.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
-    gem 'IosReceipt'
+    gem 'ios-receipt'
 
 And then execute:
 
@@ -14,11 +14,16 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install IosReceipt
+    $ gem install ios-receipt
 
 ## Usage
 
-TODO: Write usage instructions here
+result = Ios::Receipt.verify! encoded_receipt, mode, ENV['IOS_SHARED_SECRET']
+mode can be one of :sandbox, :production, or :mixed (try both)
+result.latest returns all receipts
+Each receipt object has fields: :quantity, :product_id, :original_transaction_id, :transaction_id, :original_purchase_date,
+    :purchase_date, :expires_date, :cancellation_date, :app_item_id, :version_external_identifier, 
+        :web_order_line_item_id, :is_trial_period
 
 ## Contributing
 
