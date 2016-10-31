@@ -1,6 +1,6 @@
 class Ios::Receipt::Result
   attr_reader :result, :environment, :bundle_id, :application_version, :original_application_version,
-              :in_app, :latest
+              :in_app, :latest, :receipt_style
 
   def initialize(result, environment=nil)
     @result = result
@@ -15,7 +15,8 @@ class Ios::Receipt::Result
     @application_version = receipt['application_version']
     @original_application_version = receipt['original_application_version']
 
-    if receipt['original_transaction_id'] # ios6 style receipt
+    @receipt_style = receipt['original_transaction_id'] ? :ios6 : :ios7
+    if @receipt_style == :ios6
       latest = result['latest_receipt_info'] || result['latest_expired_receipt_info']
       @latest = if latest
         [ Ios::Receipt::Receipt.new(latest) ]
